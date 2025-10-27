@@ -52,7 +52,7 @@ const configInfo = async () => {
     console.log('데이타베이스에서 컨피그 정보를 성공적으로 불러왔습니다.');
     
     const config = JSON.parse(rows[0]["operation"]);
-    console.log('✅ 컨피그 ----> ', config);
+    // console.log('✅ 컨피그 ----> ', config);
     console.log('✅ 컨피그 파일 로드 완료:');
 
     geminiKeys = config.geminiKeys || [];
@@ -99,6 +99,42 @@ function runScript(scriptPath, user, blog, config, cookie, logInfo) {
     return new Promise((resolve, reject) => {
         console.log(`${colors.cyan}실행 중: ${scriptPath}${colors.reset}`);
         const child = spawn('node', [scriptPath, JSON.stringify(geminiKeys), JSON.stringify(user), JSON.stringify(cookie)], {
+            cwd: __dirname,
+            stdio: 'inherit', // 자식 프로세스의 출력을 현재 프로세스로 전달
+            shell: false
+        });
+
+        child.on('error', (error) => {
+            console.error(`${colors.red}오류 발생: ${error.message}${colors.reset}`);
+            reject(error);
+        });
+
+        child.on('exit', (code) => {
+            if (code === 0) {
+                console.log(`${colors.green}✓ 완료: ${scriptPath}${colors.reset}\n`);
+                resolve();
+            } else {
+                const error = new Error(`스크립트가 오류 코드 ${code}로 종료됨`);
+                console.error(`${colors.red}✗ 실패: ${scriptPath} (종료 코드: ${code})${colors.reset}`);
+                reject(error);
+            }
+        });
+    });
+}
+
+function runCoupang(user, blog, config, cookie, logInfo) {
+    const scriptPath = path.join(__dirname, '5.coupang.js');
+    const smallConfig = {  
+      AFFILIATE_ID: config.AFFILIATE_ID,
+      CHANNEL_ID: config.CHANNEL_ID,
+      DEFAULT_URL: config.DEFAULT_URL,
+      MY_EMAIL: config.MY_EMAIL,
+      geminiModel: config.geminiModel
+    };
+
+    return new Promise((resolve, reject) => {
+        console.log(`${colors.cyan}실행 중: ${scriptPath}${colors.reset}`);
+        const child = spawn('node', [scriptPath, JSON.stringify(geminiKeys), JSON.stringify(user), JSON.stringify(cookie), JSON.stringify(smallConfig)], {
             cwd: __dirname,
             stdio: 'inherit', // 자식 프로세스의 출력을 현재 프로세스로 전달
             shell: false
@@ -421,6 +457,9 @@ async function runNaverPartner(user, blog, config, cookie, logInfo){
   await runAll(user, blog, config, cookie, logInfo);
 }
 
+async function runCoupangPartner(user, blog, config, cookie, logInfo){
+  await runCoupang(user, blog, config, cookie, logInfo);
+}
 // console.clear();
 async function main() {
 
@@ -485,13 +524,12 @@ async function main() {
           const content = user.blogContent[index];
           if(content === 'N'){
             await runNaverPartner(user, blog, config, cookie, logInfo);
+          if(content === 'C'){
+            await runCoupangPartner(user, blog, config, cookie, logInfo);
           }
-            // }else if(conent === 'C'){
-          //   await runCoupangPartner(user, blog, config, cookie, logInfo);
-          // }
         }
         // await runForPost(user, blog, config, cookie, logInfo);
-        logWithTime(`블로그 ${blog}에 대한 포스팅을 완료했습니다.`);
+        logWithTime(`블로그 ${blog.blogId} ${user.nickName}에 대한 포스팅을 완료했습니다.`);
         logWithTime(`새 포스팅 시작전 30 ~ 60분 대기...`);
         await new Promise(resolve => setTimeout(resolve, getRandomMs(30, 60)));  
         
