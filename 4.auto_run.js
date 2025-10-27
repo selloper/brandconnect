@@ -524,7 +524,7 @@ async function main() {
           const content = user.blogContent[index];
           if(content === 'N'){
             await runNaverPartner(user, blog, config, cookie, logInfo);
-          if(content === 'C'){
+          }else if(content === 'C'){
             await runCoupangPartner(user, blog, config, cookie, logInfo);
           }
         }
